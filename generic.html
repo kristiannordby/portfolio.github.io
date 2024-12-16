@@ -1,0 +1,256 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+ 		<title>Our Project- Text Classification with Vader and Transformers</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+		code {
+			background-color: #eee;
+			font-family: "Helvetica","Arial", sans-serif;
+			font-size: 14px;
+		}
+		pre code {
+			background-color: #eee;
+			border: 1px solid #999;
+			font-family: "Helvetica","Arial", sans-serif;
+			color: #333
+			line-height: 1.5;
+			display: block;
+			padding: 20px;
+		  }
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<a href="index.html" class="logo">Back to Main</a>
+					</header>
+
+				<!-- Nav -->
+					<nav id="nav">
+						<ul class="links">
+							<li><a href="index.html">Introduction</a></li>
+							<li class="active"><a href="generic.html">Project 1</a></li>
+							<li><a href="elements.html">Project 2</a></li>
+							<li><a href="project3.html">Project 3</a></li>
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Post -->
+							<section class="post">
+								<header class="major">
+									<h1>Text Classification with Vader and Transformers<br />
+									</h1>
+								</header>
+								<p>For this project, we used two python packages to analyze twitter sentiment on Biden, Trump, and Kamala. We chose to analyze political topics because of the upcoming election and therefore increasing relevance on twitter. We are interested to see how each of these candidates are viewd by twitter users to get some insight into possible election outcomes.</p>
+								<h3> Importing Data</h3>
+								<p>We could not get our twitter API to work, so we pulled our data from this website <a href = "https://www.kaggle.com/datasets/fastcurious/twitter-dataset-february-2024?resource=download"> kaggle (linked here)</a>. We load our data in a json format to be processed for sentiment analysis.</p>
+								<body>
+									<pre code>
+										<code>							
+# Import data from json file
+import json
+with open(r"C:\Users\kristian.nordby\OneDrive - West Point\Desktop\AY 25-1\NLP\dataset_tweet-scraper_2024-03-04_15-49-10-416.json",'r',encoding='utf-8') as f:
+	content = json.load(f)
+										</code>
+									</pre code>
+								<p> Next we define the functions that will preprocess our data.</p>
+									<pre code>
+										<code>
+# Function that cleans data to include only text from tweets
+def get_text(tweets:list)->list:
+	text = []
+	for tweet in tweets:
+	if tweet['type']=='tweet':
+		text.append(tweet['text'])
+	return text
+
+
+# Function that pulls tweets with the specified topic
+def pull_topic(tweets:list,topic:str)->list:
+	tweets_ontopic=[]
+	for tweet in tweets:
+		if topic.lower() in str(tweet.lower()):
+			tweets_ontopic.append(tweet)
+	return tweets_ontopic
+
+# View first 4 tweets in the dataset
+text = get_text(content)
+print(text[:4])
+										</code>
+										<code>
+['#Demographics is destiny. The future ONLY belongs to those able and willing to conduct #massdeportations, STOP the #BorderInvasion.🇺🇸', '“@Gemini failed to conduct due diligence on an unregulated third party, later accused of massive fraud, harming Earn customers who were suddenly unable to access their assets after Genesis Global Capital experienced a financial meltdown.” https://t.co/fb9qSOHSqT', '@BidensWins 🤣 did Hunter conduct the poll ?', '@visegrad24 So he can give them more orders to conduct October 7th type attacks.']
+										</code>
+									</pre>
+								</body>
+								<h3> Sentiment Analysis with VADER</h3>
+								<pre>
+								<code>
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+def analyze_sentiment(tweets, topic):
+	print(f'Analyzing sentiment for topic "{topic}"')
+	tweet_list = pull_topic(tweets, topic)
+	sid = SentimentIntensityAnalyzer()
+	# Create empty lists we can take the average of for each
+	neg_list = []
+	pos_list = []
+	neu_list = []
+	# Loop through each tweet to find the sentiments and apend to each list
+	for tweet in tweet_list:
+		sentiment_scores = sid.polarity_scores(tweet)
+		neg_list.append(sentiment_scores['pos'])
+		neu_list.append(sentiment_scores['neu'])
+		pos_list.append(sentiment_scores['neg'])
+	print(f'Average positive sentiment: {sum(pos_list) / len(pos_list)}')
+	print(f'Average neutral sentiment: {sum(neu_list) / len(neu_list)}')
+	print(f'Average negative sentiment: {sum(neg_list) / len(neg_list)}')
+
+analyze_sentiment(text, 'Trump')
+analyze_sentiment(text, 'Biden')
+analyze_sentiment(text, 'Kamala')
+
+								</code>
+							<code>
+Analyzing sentiment for topic "Trump"
+Average positive sentiment: 0.08354761904761905
+Average neutral sentiment: 0.8376785714285714
+Average negative sentiment: 0.07876190476190476
+
+Analyzing sentiment for topic "Biden"
+Average positive sentiment: 0.10387931034482759
+Average neutral sentiment: 0.8245
+Average negative sentiment: 0.07158620689655172
+
+Analyzing sentiment for topic "Kamala"
+Average positive sentiment: 0.038
+Average neutral sentiment: 0.8407777777777778
+Average negative sentiment: 0.12122222222222222
+							</code>
+							</pre>
+						<p>After analyzing Trump, Biden, and Kamala using the VADER sentiment analysis package. We can conclude that most of the tweets were considered neutral for all thre candidates. We know this cannot be entirely accurate because tweets are especially polarized during elections. We can assume that the VADER sentiment package is not picking up on the full sentiment from each tweet. By using something more advanced we can gain more insight into how each candidate is viewed.</p>
+					<h3> Advanced Sentiment Analysis using Transformers</h3>		
+					<p>We used the <code>transformers</code> sentiment-analysis pipeline to conduct an advanced sentiment analysis. Using this pipeline, we did not need to clean our data, because the bert model under the pipeline comes with a custom tokenizer to account for special characters and white space. The Sentiment Analysis pipeline also takes into account stop words.</p>
+					<pre>
+						<code>
+from transformers import pipeline
+classifier = pipeline("sentiment-analysis")
+						</code>
+					</pre>
+					<p>The following functions filter out the topic we are interested in then run a sentiment analysis using the pipeline. <code>conduct_sentiment_analysis()</code> calls the transformers sentiment analysis pipeline, while <code>pull_sentiment()</code> brings multiple functions together to run using all tweets and a topic as parameters, returning the sentiment analysis.</p>
+				<pre>
+					<code>
+def conduct_sentiment_analysis(tweets:list):
+    sentiments = []
+    for tweet in tweets:
+        if len(tweet)>512:
+            tweet = tweet[:512]
+        sentiments.append(classifier(tweet)[0]['label'])
+    sentiments = ' '.join(sentiments)
+    positive_prop = sentiments.count('POSITIVE')/len(tweets)
+    neutral_prop = sentiments.count('NEUTRAL')/len(tweets)
+    negative_prop = sentiments.count('NEGATIVE')/len(tweets)
+    print(f"Positive Proportion: {positive_prop}, Negative Proportion: {negative_prop}, Neutral Proportion: {neutral_prop}")
+    return positive_prop,negative_prop,neutral_prop
+
+def pull_sentiments(tweets:list,topic:str):
+    tweets_ontopic = pull_topic(tweets=tweets,topic=topic)
+    print(f"{len(tweets_ontopic)} tweets mention {topic}.")
+    pos,neg,neu = conduct_sentiment_analysis(tweets_ontopic)
+    return pos,neg,neu
+					</code>
+				</pre>
+				<p>
+					In our project, we were interested in how certain political icons were depicted by twitter users. We focused on Joe Biden, Donald Trump, Kamala Harris, and the white house. In our analysis, we wanted to see if certain politicians were depicted better than others, and whether or not the overall sentiment of politics (using key word "white house" as our baseline) reflected the average sentiment for our candidates of interest.
+				</p>
+				<pre>
+					<code>
+pos_biden = pull_sentiments(tweets=text,topic="biden")[0]
+neg_biden = pull_sentiments(tweets=text,topic="biden")[1]
+
+pos_trump = pull_sentiments(tweets=text,topic="trump")[0]
+neg_trump = pull_sentiments(tweets=text,topic="trump")[1]
+
+pos_kamala = pull_sentiments(tweets=text,topic="kamala")[0]
+neg_kamala = pull_sentiments(tweets=text,topic="kamala")[1]
+
+pos_wh = pull_sentiments(tweets=text,topic="white house")[0]
+neg_wh = pull_sentiments(tweets=text,topic="white house")[1]
+					</code>
+					<code>
+58 tweets mention biden.
+Positive Proportion: 0.1896551724137931, Negative Proportion: 0.8103448275862069, Neutral Proportion: 0.0
+58 tweets mention biden.
+Positive Proportion: 0.1896551724137931, Negative Proportion: 0.8103448275862069, Neutral Proportion: 0.0
+						
+84 tweets mention trump.
+Positive Proportion: 0.15476190476190477, Negative Proportion: 0.8452380952380952, Neutral Proportion: 0.0
+84 tweets mention trump.
+Positive Proportion: 0.15476190476190477, Negative Proportion: 0.8452380952380952, Neutral Proportion: 0.0
+
+9 tweets mention kamala.
+Positive Proportion: 0.2222222222222222, Negative Proportion: 0.7777777777777778, Neutral Proportion: 0.0
+9 tweets mention kamala.
+Positive Proportion: 0.2222222222222222, Negative Proportion: 0.7777777777777778, Neutral Proportion: 0.0
+
+6 tweets mention white house.
+Positive Proportion: 0.0, Negative Proportion: 1.0, Neutral Proportion: 0.0
+6 tweets mention white house.
+Positive Proportion: 0.0, Negative Proportion: 1.0, Neutral Proportion: 0.0
+					</code>
+				</pre>	
+				<p>Our Sentiment Analysis revealed that all politicians, regardless of party, are depicted in a negative light. This makes sense as the phrase "white house" had a 100% negative sentiment label.</p>
+				</section>
+
+					</div>
+
+					<div id="main">
+
+						<!-- Post -->
+							<section class="post">
+								<header class="major">
+									<h1>Conclusion</h1>
+								</header>
+								<h2 style = "text-align: center;">Outcome</h2>
+								<div style = "text-align: center">
+									<img src="images/output.png" alt="Hello" style = "width:750px;height:650px"/></a>
+								<!-- Text stuff -->
+									<p>Our Sentiment Analysis revealed that all politicians, regardless of party, are depicted in a negative light. This makes sense as the phrase "white house" had a 100% negative sentiment label.</p>
+									<hr />
+									<h2>Overview</h2>
+									<h3 style = "text-align: left;">Limiting factors:</h3>
+									<ul>
+										<li style = "text-align: left;">Topics used in sentiment analysis are not necessarily exclusive in each tweet
+										<li style = "text-align: left">Sentiment analysis is run on entire tweet (ex. Tweets containing both "Trump" and "Biden")</li>
+										<li style = "text-align: left">Tokenized on words but did not account for mispellings, nicknames, special characters in the name (i.e., "'the orange man' on 'capital hill'")</li>
+										<li style = "text-align: left">Size of dataset</li>
+									</ul>
+									<ul>
+									<h3 style = "text-align: left;">Future Work:</h3>
+									<li style = "text-align: left">Grouping tweets into party groups based on sentiment analysis of certain figures</li>
+									<li style = "text-align: left">would need to account for exclusivity of topics</li>
+									</ul>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
